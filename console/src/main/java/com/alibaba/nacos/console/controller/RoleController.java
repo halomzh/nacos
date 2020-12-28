@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
+ * 角色
  * Role operation controller.
  *
  * @author nkorange
@@ -41,10 +42,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/v1/auth/roles")
 public class RoleController {
-    
+
     @Autowired
     private NacosRoleServiceImpl roleService;
-    
+
     /**
      * Get roles list.
      *
@@ -56,10 +57,10 @@ public class RoleController {
     @GetMapping
     @Secured(resource = NacosAuthConfig.CONSOLE_RESOURCE_NAME_PREFIX + "roles", action = ActionTypes.READ)
     public Object getRoles(@RequestParam int pageNo, @RequestParam int pageSize,
-            @RequestParam(name = "username", defaultValue = "") String username) {
+                           @RequestParam(name = "username", defaultValue = "") String username) {
         return roleService.getRolesFromDatabase(username, pageNo, pageSize);
     }
-    
+
     /**
      * Fuzzy matching role name .
      *
@@ -71,7 +72,7 @@ public class RoleController {
     public List<String> searchRoles(@RequestParam String role) {
         return roleService.findRolesLikeRoleName(role);
     }
-    
+
     /**
      * Add a role to a user
      *
@@ -87,7 +88,7 @@ public class RoleController {
         roleService.addRole(role, username);
         return new RestResult<>(200, "add role ok!");
     }
-    
+
     /**
      * Delete a role. If no username is specified, all users under this role are deleted.
      *
@@ -98,7 +99,7 @@ public class RoleController {
     @DeleteMapping
     @Secured(resource = NacosAuthConfig.CONSOLE_RESOURCE_NAME_PREFIX + "roles", action = ActionTypes.WRITE)
     public Object deleteRole(@RequestParam String role,
-            @RequestParam(name = "username", defaultValue = StringUtils.EMPTY) String username) {
+                             @RequestParam(name = "username", defaultValue = StringUtils.EMPTY) String username) {
         if (StringUtils.isBlank(username)) {
             roleService.deleteRole(role);
         } else {
@@ -106,5 +107,5 @@ public class RoleController {
         }
         return new RestResult<>(200, "delete role of user " + username + " ok!");
     }
-    
+
 }

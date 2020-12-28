@@ -39,20 +39,29 @@ import javax.annotation.PostConstruct;
 @EnableScheduling
 @PropertySource("/application.properties")
 public class ConsoleConfig {
-    
+
     @Autowired
     private ControllerMethodsCache methodsCache;
-    
+
     /**
+     * 初始化服务（将相应控制器信息放入methodsCache中）
      * Init.
      */
     @PostConstruct
     public void init() {
+        //初始化名称服务控制器
         methodsCache.initClassMethod("com.alibaba.nacos.naming.controllers");
+        //初始化控制台服务控制器
         methodsCache.initClassMethod("com.alibaba.nacos.console.controller");
+        //初始化配置服务控制器
         methodsCache.initClassMethod("com.alibaba.nacos.config.server.controller");
     }
-    
+
+    /**
+     * 跨域过滤器
+     *
+     * @return 跨域过滤器
+     */
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * 服务状态
  * Server state controller.
  *
  * @author xingxuechao on:2019/2/27 11:17 AM
@@ -34,7 +35,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/v1/console/server")
 public class ServerStateController {
-    
+
     /**
      * Get server state of current server.
      *
@@ -44,12 +45,12 @@ public class ServerStateController {
     public ResponseEntity serverState() {
         Map<String, String> serverState = new HashMap<>(3);
         serverState.put("standalone_mode", ApplicationUtils.getStandaloneMode() ? ApplicationUtils.STANDALONE_MODE_ALONE
-                : ApplicationUtils.STANDALONE_MODE_CLUSTER);
-        
+            : ApplicationUtils.STANDALONE_MODE_CLUSTER);
+
         serverState.put("function_mode", ApplicationUtils.getFunctionMode());
         serverState.put("version", VersionUtils.version);
-        
+
         return ResponseEntity.ok().body(serverState);
     }
-    
+
 }

@@ -31,26 +31,27 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
+ * token拦截器
  * jwt auth token filter.
  *
  * @author wfnuser
  */
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
-    
+
     private static final String TOKEN_PREFIX = "Bearer ";
-    
+
     private final JwtTokenManager tokenManager;
-    
+
     public JwtAuthenticationTokenFilter(JwtTokenManager tokenManager) {
         this.tokenManager = tokenManager;
     }
-    
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
-        
+        throws IOException, ServletException {
+
         String jwt = resolveToken(request);
-        
+
         if (StringUtils.isNotBlank(jwt) && SecurityContextHolder.getContext().getAuthentication() == null) {
             this.tokenManager.validateToken(jwt);
             Authentication authentication = this.tokenManager.getAuthentication(jwt);
@@ -58,7 +59,7 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
         }
         chain.doFilter(request, response);
     }
-    
+
     /**
      * Get token from header.
      */

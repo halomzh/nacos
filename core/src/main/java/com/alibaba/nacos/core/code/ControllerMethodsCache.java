@@ -56,46 +56,67 @@ import static com.alibaba.nacos.sys.env.Constants.REQUEST_PATH_SEPARATOR;
  */
 @Component
 public class ControllerMethodsCache {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ControllerMethodsCache.class);
-    
+
     @Value("${server.servlet.contextPath:/nacos}")
     private String contextPath;
-    
+
     private ConcurrentMap<RequestMappingInfo, Method> methods = new ConcurrentHashMap<>();
-    
+
     private final ConcurrentMap<String, List<RequestMappingInfo>> urlLookup = new ConcurrentHashMap<>();
-    
+
+    /**
+     * 根据请求获取方法
+     *
+     * @param request 请求
+     * @return 方法
+     */
     public Method getMethod(HttpServletRequest request) {
+        //获取接口路径
         String path = getPath(request);
         if (path == null) {
             return null;
         }
+        //获取请求方法
         String httpMethod = request.getMethod();
+        //生成urlKey
         String urlKey = httpMethod + REQUEST_PATH_SEPARATOR + path.replace(contextPath, "");
+        //根据urlKey获取请求信息
         List<RequestMappingInfo> requestMappingInfos = urlLookup.get(urlKey);
         if (CollectionUtils.isEmpty(requestMappingInfos)) {
             return null;
         }
+        //获取匹配的请求信息
         List<RequestMappingInfo> matchedInfo = findMatchedInfo(requestMappingInfos, request);
         if (CollectionUtils.isEmpty(matchedInfo)) {
             return null;
         }
+        //获取匹配到的首个请求映射信息
         RequestMappingInfo bestMatch = matchedInfo.get(0);
+        //匹配到的请求映射信息大于1个
         if (matchedInfo.size() > 1) {
+            //请求映射比较器
             RequestMappingInfoComparator comparator = new RequestMappingInfoComparator();
             matchedInfo.sort(comparator);
             bestMatch = matchedInfo.get(0);
             RequestMappingInfo secondBestMatch = matchedInfo.get(1);
             if (comparator.compare(bestMatch, secondBestMatch) == 0) {
                 throw new IllegalStateException(
-                        "Ambiguous methods mapped for '" + request.getRequestURI() + "': {" + bestMatch + ", "
-                                + secondBestMatch + "}");
+                    "Ambiguous methods mapped for '" + request.getRequestURI() + "': {" + bestMatch + ", "
+                        + secondBestMatch + "}");
             }
         }
+        //根据请求映射信息获取方法
         return methods.get(bestMatch);
     }
-    
+
+    /**
+     * 获取请求接口路径
+     *
+     * @param request 请求
+     * @return 接口路径
+     */
     private String getPath(HttpServletRequest request) {
         String path = null;
         try {
@@ -105,21 +126,29 @@ public class ControllerMethodsCache {
         }
         return path;
     }
-    
+
+    /**
+     * 获取匹配的请求映射信息
+     *
+     * @param requestMappingInfos 请求映射信息列表
+     * @param request             请求
+     * @return 请求映射信息
+     */
     private List<RequestMappingInfo> findMatchedInfo(List<RequestMappingInfo> requestMappingInfos,
-            HttpServletRequest request) {
+                                                     HttpServletRequest request) {
         List<RequestMappingInfo> matchedInfo = new ArrayList<>();
         for (RequestMappingInfo requestMappingInfo : requestMappingInfos) {
             ParamRequestCondition matchingCondition = requestMappingInfo.getParamRequestCondition()
-                    .getMatchingCondition(request);
+                .getMatchingCondition(request);
             if (matchingCondition != null) {
                 matchedInfo.add(requestMappingInfo);
             }
         }
         return matchedInfo;
     }
-    
+
     /**
+     * 初始化目标包内方法（将目标方法与其匹配的映射信息加入缓存）
      * find target method from this package.
      *
      * @param packageName package name
@@ -127,12 +156,12 @@ public class ControllerMethodsCache {
     public void initClassMethod(String packageName) {
         Reflections reflections = new Reflections(packageName);
         Set<Class<?>> classesList = reflections.getTypesAnnotatedWith(RequestMapping.class);
-        
+
         for (Class clazz : classesList) {
             initClassMethod(clazz);
         }
     }
-    
+
     /**
      * find target method from class list.
      *
@@ -143,7 +172,7 @@ public class ControllerMethodsCache {
             initClassMethod(clazz);
         }
     }
-    
+
     /**
      * find target method from target class.
      *
@@ -170,39 +199,54 @@ public class ControllerMethodsCache {
             }
         }
     }
-    
+
+    /**
+     * 解析子注解
+     *
+     * @param method    方法
+     * @param classPath 类路径
+     */
     private void parseSubAnnotations(Method method, String classPath) {
-        
+
         final GetMapping getMapping = method.getAnnotation(GetMapping.class);
         final PostMapping postMapping = method.getAnnotation(PostMapping.class);
         final PutMapping putMapping = method.getAnnotation(PutMapping.class);
         final DeleteMapping deleteMapping = method.getAnnotation(DeleteMapping.class);
         final PatchMapping patchMapping = method.getAnnotation(PatchMapping.class);
-        
+
         if (getMapping != null) {
             put(RequestMethod.GET, classPath, getMapping.value(), getMapping.params(), method);
         }
-        
+
         if (postMapping != null) {
             put(RequestMethod.POST, classPath, postMapping.value(), postMapping.params(), method);
         }
-        
+
         if (putMapping != null) {
             put(RequestMethod.PUT, classPath, putMapping.value(), putMapping.params(), method);
         }
-        
+
         if (deleteMapping != null) {
             put(RequestMethod.DELETE, classPath, deleteMapping.value(), deleteMapping.params(), method);
         }
-        
+
         if (patchMapping != null) {
             put(RequestMethod.PATCH, classPath, patchMapping.value(), patchMapping.params(), method);
         }
-        
+
     }
-    
+
+    /**
+     * 加入缓存
+     *
+     * @param requestMethod 请求方法
+     * @param classPath     类路径
+     * @param requestPaths  请求路径
+     * @param requestParams 请求参数
+     * @param method        方法
+     */
     private void put(RequestMethod requestMethod, String classPath, String[] requestPaths, String[] requestParams,
-            Method method) {
+                     Method method) {
         if (ArrayUtils.isEmpty(requestPaths)) {
             String urlKey = requestMethod.name() + REQUEST_PATH_SEPARATOR + classPath;
             addUrlAndMethodRelation(urlKey, requestParams, method);
@@ -213,7 +257,14 @@ public class ControllerMethodsCache {
             addUrlAndMethodRelation(urlKey, requestParams, method);
         }
     }
-    
+
+    /**
+     * 将匹配到的信息加入缓存
+     *
+     * @param urlKey       路由匹配键
+     * @param requestParam 请求参数
+     * @param method       方法
+     */
     private void addUrlAndMethodRelation(String urlKey, String[] requestParam, Method method) {
         RequestMappingInfo requestMappingInfo = new RequestMappingInfo();
         requestMappingInfo.setPathRequestCondition(new PathRequestCondition(urlKey));
@@ -226,11 +277,11 @@ public class ControllerMethodsCache {
         requestMappingInfos.add(requestMappingInfo);
         methods.put(requestMappingInfo, method);
     }
-    
+
     public String getContextPath() {
         return contextPath;
     }
-    
+
     public void setContextPath(String contextPath) {
         this.contextPath = contextPath;
     }
